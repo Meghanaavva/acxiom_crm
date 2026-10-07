@@ -1,0 +1,257 @@
+@model FollowUpIndexViewModel
+@{
+    ViewData["Title"] = "Follow-Ups";
+    var canDelete = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    var today = DateHelper.Today().ToString("yyyy-MM-dd");
+    var views = new[] { ("", "All"), ("today", "Today"), ("upcoming", "Upcoming"), ("overdue", "Overdue") };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">Follow-Ups</h1>
+        <p class="text-muted small mb-0">Scheduled calls, meetings and reminders</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Schedule Follow-Up</a>
+</div>
+
+<!-- Quick views -->
+<ul class="nav nav-pills mb-3">
+    @foreach (var (value, label) in views)
+    {
+        var active = (Model.Query.View ?? "") == value;
+        <li class="nav-item">
+            <a class="nav-link @(active ? "active" : "")" href="@Ui.WithQuery(Context.Request, ("view", value), ("page", null))">@label</a>
+        </li>
+    }
+</ul>
+
+<div class="card">
+    <div class="card-body">
+        <!-- Search and filters -->
+        <form method="get" class="row g-2 mb-3 auto-submit">
+            <input type="hidden" name="view" value="@Model.Query.View" />
+            <div class="col-md-3">
+                <div class="input-group">
+                    <input type="search" name="search" value="@Model.Query.Search" class="form-control" placeholder="Search by subject" aria-label="Search follow-ups" />
+                    <button class="btn btn-outline-primary" type="submit" aria-label="Search"><i class="bi bi-search"></i></button>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select" aria-label="Filter by status">
+                    <option value="">All Statuses</option>
+                    @foreach (var s in FollowUpStatuses.All.Append("Overdue"))
+                    {
+                        <option value="@s" selected="@(Model.Query.Status == s)">@s</option>
+                    }
+                </select>
+            </div>
+            @if (Model.Users.Count > 1)
+            {
+                <div class="col-md-2">
+                    <select name="assignedTo" class="form-select" aria-label="Filter by assigned user">
+                        <option value="">All Users</option>
+                        @foreach (var u in Model.Users)
+                        {
+                            <option value="@u.Value" selected="@(Model.Query.AssignedTo?.ToString() == u.Value)">@u.Text</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-md-2">
+                <select name="customerId" class="form-select" aria-label="Filter by related customer">
+                    <option value="">All Customers</option>
+                    @foreach (var c in Model.Customers)
+                    {
+                        <option value="@c.Value" selected="@(Model.Query.CustomerId?.ToString() == c.Value)">@c.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="leadId" class="form-select" aria-label="Filter by related lead">
+                    <option value="">All Leads</option>
+                    @foreach (var l in Model.Leads)
+                    {
+                        <option value="@l.Value" selected="@(Model.Query.LeadId?.ToString() == l.Value)">@l.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="dateFrom" value="@Model.Query.DateFrom" class="form-control" aria-label="From date" title="From date" />
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="dateTo" value="@Model.Query.DateTo" class="form-control" aria-label="To date" title="To date" />
+            </div>
+            <div class="col-md-2">
+                <a asp-action="Index" class="btn btn-outline-secondary w-100">Clear</a>
+            </div>
+            <input type="hidden" name="sortBy" value="@Model.Query.SortBy" />
+            <input type="hidden" name="sortOrder" value="@Model.Query.SortOrder" />
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        @Ui.SortHeader(Context.Request, "subject", "Subject")
+                        <th>Type</th>
+                        @Ui.SortHeader(Context.Request, "followUpDate", "Date")
+                        <th>Related To</th>
+                        @Ui.SortHeader(Context.Request, "status", "Status")
+                        <th>Assigned To</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Result.Data.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center text-muted py-4">No follow-ups found.</td></tr>
+                    }
+                    @foreach (var f in Model.Result.Data)
+                    {
+                        var canAct = f.Status == FollowUpStatuses.Planned || f.Status == FollowUpStatuses.Missed;
+                        <tr class="@(f.IsOverdue ? "table-danger" : "")">
+                            <td>
+                                <div class="fw-semibold">@f.Subject</div>
+                                @if (!string.IsNullOrEmpty(f.Remarks))
+                                {
+                                    <div class="small text-muted text-truncate" style="max-width: 260px;">@f.Remarks</div>
+                                }
+                            </td>
+                            <td>@f.FollowUpType</td>
+                            <td class="text-nowrap">@Ui.Date(f.FollowUpDate)</td>
+                            <td class="small">
+                                @if (f.CustomerId != null)
+                                {
+                                    <div><i class="bi bi-people me-1"></i><a asp-controller="Customers" asp-action="Details" asp-route-id="@f.CustomerId">@f.CustomerName</a></div>
+                                }
+                                @if (f.LeadId != null)
+                                {
+                                    <div><i class="bi bi-person-plus me-1"></i><a asp-controller="Leads" asp-action="Details" asp-route-id="@f.LeadId">@f.LeadName</a></div>
+                                }
+                                @if (f.OpportunityId != null)
+                                {
+                                    <div><i class="bi bi-briefcase me-1"></i><a asp-controller="Opportunities" asp-action="Details" asp-route-id="@f.OpportunityId">@f.OpportunityName</a></div>
+                                }
+                            </td>
+                            <td>
+                                @Ui.Badge(f.Status)
+                                @if (f.IsOverdue)
+                                {
+                                    @Ui.Badge("Overdue")
+                                }
+                            </td>
+                            <td>@f.AssignedToName</td>
+                            <td class="text-end text-nowrap">
+                                @if (canAct)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-success" title="Complete" aria-label="Complete @f.Subject"
+                                            data-bs-toggle="modal" data-bs-target="#completeModal"
+                                            data-url="@Url.Action("Complete", new { id = f.Id })" data-subject="@f.Subject">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" title="Reschedule" aria-label="Reschedule @f.Subject"
+                                            data-bs-toggle="modal" data-bs-target="#rescheduleModal"
+                                            data-url="@Url.Action("Reschedule", new { id = f.Id })" data-subject="@f.Subject">
+                                        <i class="bi bi-calendar-event"></i>
+                                    </button>
+                                }
+                                @if (f.Status == FollowUpStatuses.Planned)
+                                {
+                                    <form asp-action="Missed" asp-route-id="@f.Id" method="post" class="d-inline" data-confirm="Mark '@f.Subject' as missed?" data-confirm-button="Mark Missed" data-confirm-variant="btn-warning">
+                                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Mark as missed" aria-label="Mark @f.Subject as missed"><i class="bi bi-x-circle"></i></button>
+                                    </form>
+                                    <a asp-action="Edit" asp-route-id="@f.Id" class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit @f.Subject"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (canAct)
+                                {
+                                    <form asp-action="Cancel" asp-route-id="@f.Id" method="post" class="d-inline" data-confirm="Cancel the follow-up '@f.Subject'?" data-confirm-button="Cancel Follow-Up" data-confirm-variant="btn-secondary">
+                                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Cancel" aria-label="Cancel @f.Subject"><i class="bi bi-slash-circle"></i></button>
+                                    </form>
+                                }
+                                @if (canDelete)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@f.Id" method="post" class="d-inline" data-confirm="Are you sure you want to delete '@f.Subject'? This action will be recorded in the audit log." data-confirm-button="Delete">
+                                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete @f.Subject"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pagination" model="Model.Result.Pagination" />
+    </div>
+</div>
+
+<!-- Complete modal (form action is set when the modal opens) -->
+<div class="modal fade" id="completeModal" tabindex="-1" aria-labelledby="completeModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" class="modal-content" id="completeForm">
+            <div class="modal-header">
+                <h5 class="modal-title" id="completeModalTitle">Complete Follow-Up</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Mark <strong class="modal-subject"></strong> as completed.</p>
+                <label for="completeRemarks" class="form-label">Remarks (optional)</label>
+                <textarea id="completeRemarks" name="remarks" rows="3" maxlength="1000" class="form-control"></textarea>
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-success">Mark Completed</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reschedule modal -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1" aria-labelledby="rescheduleModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" class="modal-content" id="rescheduleForm" novalidate>
+            <div class="modal-header">
+                <h5 class="modal-title" id="rescheduleModalTitle">Reschedule Follow-Up</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">New date for <strong class="modal-subject"></strong></p>
+                <div class="mb-3">
+                    <label for="rescheduleDate" class="form-label">Follow-up Date <span class="text-danger">*</span></label>
+                    <input type="date" id="rescheduleDate" name="FollowUpDate" min="@today" class="form-control"
+                           data-val="true" data-val-required="Follow-up Date is required."
+                           data-val-notpast="Follow-up date cannot be earlier than today." />
+                    <span class="field-validation-valid" data-valmsg-for="FollowUpDate" data-valmsg-replace="true"></span>
+                </div>
+                <label for="rescheduleRemarks" class="form-label">Remarks (optional)</label>
+                <textarea id="rescheduleRemarks" name="Remarks" rows="3" maxlength="1000" class="form-control"></textarea>
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Reschedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Point the modal form to the follow-up that was clicked
+        ['completeModal', 'rescheduleModal'].forEach(function (id) {
+            var modal = document.getElementById(id);
+            modal.addEventListener('show.bs.modal', function (e) {
+                var button = e.relatedTarget;
+                var form = modal.querySelector('form');
+                form.action = button.dataset.url;
+                modal.querySelector('.modal-subject').textContent = button.dataset.subject;
+            });
+        });
+    </script>
+}

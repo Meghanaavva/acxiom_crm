@@ -1,0 +1,96 @@
+@model LeadDetailsViewModel
+@{
+    var l = Model.Lead;
+    ViewData["Title"] = l.LeadName;
+    var canDelete = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
+    var closed = l.Status == LeadStatuses.Converted || l.Status == LeadStatuses.Lost;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">@l.LeadName</h1>
+        <p class="text-muted small mb-0">@l.LeadCode @(l.CompanyName != null ? "· " + l.CompanyName : "")</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        @if (!closed)
+        {
+            <a asp-action="Edit" asp-route-id="@l.Id" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
+        }
+        @if (canDelete)
+        {
+            <form asp-action="Delete" asp-route-id="@l.Id" method="post" data-confirm="Are you sure you want to delete the lead @l.LeadName?" data-confirm-button="Delete">
+                <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">Lead Information</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-4"><div class="small text-muted">Status</div>@Ui.Badge(l.Status)</div>
+                    <div class="col-sm-4"><div class="small text-muted">Priority</div>@Ui.Badge(l.Priority)</div>
+                    <div class="col-sm-4"><div class="small text-muted">Source</div><div class="fw-semibold">@l.Source</div></div>
+                    <div class="col-sm-4"><div class="small text-muted">Email</div><div class="fw-semibold text-break">@(l.Email ?? "-")</div></div>
+                    <div class="col-sm-4"><div class="small text-muted">Phone</div><div class="fw-semibold">@(l.Phone ?? "-")</div></div>
+                    <div class="col-sm-4"><div class="small text-muted">Expected Value</div><div class="fw-semibold">@Ui.Currency(l.ExpectedValue)</div></div>
+                    <div class="col-sm-4"><div class="small text-muted">Assigned To</div><div class="fw-semibold">@l.AssignedToName</div></div>
+                    <div class="col-sm-4"><div class="small text-muted">Created On</div><div>@Ui.DateTime(l.CreatedAt)</div></div>
+                    <div class="col-sm-4"><div class="small text-muted">Last Updated</div><div>@Ui.DateTime(l.UpdatedAt)</div></div>
+                    <div class="col-12"><div class="small text-muted">Notes</div><div>@(l.Notes ?? "-")</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">Workflow</div>
+            <div class="card-body">
+                @if (l.Status == LeadStatuses.Converted)
+                {
+                    <div class="alert alert-success mb-0">
+                        Converted on @Ui.DateTime(l.ConvertedAt)<br />
+                        Customer:
+                        @if (l.ConvertedCustomerId != null)
+                        {
+                            <a asp-controller="Customers" asp-action="Details" asp-route-id="@l.ConvertedCustomerId">@l.ConvertedCustomerName</a>
+                        }
+                    </div>
+                }
+                else if (l.Status == LeadStatuses.Lost)
+                {
+                    <div class="alert alert-secondary mb-0">This lead is marked as Lost. No further changes are allowed.</div>
+                }
+                else
+                {
+                    <p class="small text-muted mb-2">Change status (only allowed transitions are shown):</p>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @foreach (var next in Model.NextStatuses)
+                        {
+                            <form asp-action="ChangeStatus" asp-route-id="@l.Id" method="post"
+                                  data-confirm="Change the status of @l.LeadName from @l.Status to @next?" data-confirm-button="Change Status"
+                                  data-confirm-variant="@(next == LeadStatuses.Lost ? "btn-danger" : "btn-primary")">
+                                <input type="hidden" name="status" value="@next" />
+                                <button type="submit" class="btn btn-sm @(next == LeadStatuses.Lost ? "btn-outline-danger" : "btn-outline-primary")">Mark as @next</button>
+                            </form>
+                        }
+                    </div>
+                    @if (l.Status == LeadStatuses.Qualified)
+                    {
+                        <a asp-action="Convert" asp-route-id="@l.Id" class="btn btn-success w-100 mb-2"><i class="bi bi-arrow-repeat me-1"></i>Convert to Customer</a>
+                    }
+                    else
+                    {
+                        <div class="small text-muted mb-2"><i class="bi bi-info-circle me-1"></i>Only qualified leads can be converted to a customer.</div>
+                    }
+                    <a asp-controller="FollowUps" asp-action="Create" asp-route-leadId="@l.Id" class="btn btn-outline-primary w-100"><i class="bi bi-calendar-plus me-1"></i>Schedule Follow-Up</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

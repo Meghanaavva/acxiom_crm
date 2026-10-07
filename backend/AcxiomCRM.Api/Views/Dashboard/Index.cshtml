@@ -1,0 +1,258 @@
+@model DashboardViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Dashboard";
+    var k = Model.Data.Kpis;
+    var subtitle = Model.Role switch
+    {
+        Roles.Admin => "Admin dashboard · Overview of the whole organisation, users and security.",
+        Roles.Manager => "Manager dashboard · Your team's pipeline, leads and opportunities.",
+        _ => "Your assigned customers, leads, opportunities and follow-ups.",
+    };
+    var ranges = new[] { ("all", "All Time"), ("today", "Today"), ("week", "This Week"), ("month", "This Month") };
+
+    // KPI cards: label, value, icon, colour
+    var cards = new List<(string Label, string Value, string Icon, string Color)>
+    {
+        ("Total Customers", k.TotalCustomers.ToString(), "bi-people", "primary"),
+        ("Total Leads", k.TotalLeads.ToString(), "bi-person-plus", "info"),
+        ("Open Leads", k.OpenLeads.ToString(), "bi-hourglass-split", "warning"),
+        ("Total Opportunities", k.TotalOpportunities.ToString(), "bi-briefcase", "secondary"),
+        ("Open Opportunities", k.OpenOpportunities.ToString(), "bi-briefcase-fill", "primary"),
+        ("Won Opportunities", k.WonOpportunities.ToString(), "bi-trophy", "success"),
+        ("Lost Opportunities", k.LostOpportunities.ToString(), "bi-x-octagon", "danger"),
+        ("Total Pipeline Value", Ui.Currency(k.TotalPipelineValue), "bi-currency-rupee", "success"),
+        ("Weighted Pipeline", Ui.Currency(k.WeightedPipelineValue), "bi-graph-up-arrow", "info"),
+        ("Won Amount", Ui.Currency(k.WonAmount), "bi-cash-stack", "success"),
+        ("Pending Follow-Ups", k.PendingFollowUps.ToString(), "bi-calendar-check", "warning"),
+        ("Overdue Follow-Ups", k.OverdueFollowUps.ToString(), "bi-calendar-x", "danger"),
+    };
+
+    var chartJson = JsonSerializer.Serialize(Model.Data.Charts, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    var activityIcons = new Dictionary<string, string> { ["Call"] = "bi-telephone", ["Meeting"] = "bi-people", ["Email"] = "bi-envelope", ["Task"] = "bi-check2-square" };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">Welcome, @Model.UserName</h1>
+        <p class="text-muted small mb-0">@subtitle</p>
+    </div>
+    <div class="d-flex flex-column align-items-end gap-2">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Date range">
+            @foreach (var (value, label) in ranges)
+            {
+                <a asp-action="Index" asp-route-range="@value" class="btn @(Model.Range == value ? "btn-primary" : "btn-outline-primary")">@label</a>
+            }
+            <button type="button" class="btn @(Model.Range == "custom" ? "btn-primary" : "btn-outline-primary")" data-bs-toggle="collapse" data-bs-target="#customRange" aria-expanded="@(Model.Range == "custom" ? "true" : "false")">Custom</button>
+        </div>
+        <form method="get" asp-action="Index" id="customRange" class="collapse @(Model.Range == "custom" ? "show" : "")">
+            <input type="hidden" name="range" value="custom" />
+            <div class="d-flex gap-2 align-items-end">
+                <div>
+                    <label for="from" class="form-label small mb-0">From</label>
+                    <input type="date" id="from" name="from" value="@Model.From" class="form-control form-control-sm" required />
+                </div>
+                <div>
+                    <label for="to" class="form-label small mb-0">To</label>
+                    <input type="date" id="to" name="to" value="@Model.To" class="form-control form-control-sm" required />
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-warning">@Model.ErrorMessage Showing all-time data instead.</div>
+}
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+    @foreach (var card in cards)
+    {
+        <div class="col-sm-6 col-xl-3">
+            <div class="card kpi-card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="kpi-icon bg-@card.Color bg-opacity-10 text-@card.Color"><i class="bi @card.Icon"></i></div>
+                    <div>
+                        <div class="small text-muted">@card.Label</div>
+                        <div class="h5 fw-bold mb-0">@card.Value</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">Lead Status</div>
+            <div class="card-body"><canvas id="leadStatusChart" height="260" aria-label="Lead status chart" role="img"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">Opportunity Pipeline</div>
+            <div class="card-body"><canvas id="pipelineChart" height="260" aria-label="Opportunity pipeline chart" role="img"></canvas></div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white fw-semibold">Monthly Sales (last 6 months)</div>
+            <div class="card-body"><canvas id="monthlySalesChart" height="90" aria-label="Monthly sales chart" role="img"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Upcoming follow-ups and recent activities -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between">
+                <span class="fw-semibold">Upcoming Follow-Ups</span>
+                <a asp-controller="FollowUps" asp-action="Index" class="small">View all</a>
+            </div>
+            <ul class="list-group list-group-flush">
+                @if (Model.Data.UpcomingFollowUps.Count == 0)
+                {
+                    <li class="list-group-item text-muted small">No upcoming follow-ups.</li>
+                }
+                @foreach (var f in Model.Data.UpcomingFollowUps)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold">@f.Subject</div>
+                            <div class="small text-muted">@f.FollowUpType · @(f.CustomerName ?? f.LeadName ?? f.OpportunityName ?? "-") · @f.AssignedToName</div>
+                        </div>
+                        <span class="badge bg-light text-dark border">@Ui.Date(f.FollowUpDate)</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between">
+                <span class="fw-semibold">Recent Activities</span>
+                <a asp-controller="Activities" asp-action="Index" class="small">View all</a>
+            </div>
+            <ul class="list-group list-group-flush">
+                @if (Model.Data.RecentActivities.Count == 0)
+                {
+                    <li class="list-group-item text-muted small">No activities yet.</li>
+                }
+                @foreach (var a in Model.Data.RecentActivities)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold"><i class="bi @activityIcons.GetValueOrDefault(a.ActivityType, "bi-dot") text-primary me-1"></i>@a.Subject</div>
+                            <div class="small text-muted">@Ui.DateTime(a.ActivityDate) · @a.AssignedToName</div>
+                        </div>
+                        @Ui.Badge(a.Status)
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    @if (Model.Data.AdminStats != null)
+    {
+        var s = Model.Data.AdminStats;
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-shield-check me-2"></i>Users &amp; Security</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">Total Users <strong>@s.TotalUsers</strong></li>
+                    <li class="list-group-item d-flex justify-content-between">Active Users <strong>@s.ActiveUsers</strong></li>
+                    <li class="list-group-item d-flex justify-content-between">Locked Accounts <strong class="@(s.LockedUsers > 0 ? "text-danger" : "")">@s.LockedUsers</strong></li>
+                    <li class="list-group-item d-flex justify-content-between">Failed Logins Today <strong class="@(s.FailedLoginsToday > 0 ? "text-danger" : "")">@s.FailedLoginsToday</strong></li>
+                </ul>
+            </div>
+        </div>
+    }
+    @if (Model.Data.TeamPerformance != null)
+    {
+        <div class="@(Model.Data.AdminStats != null ? "col-lg-8" : "col-12")">
+            <div class="card h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-people me-2"></i>Team Performance</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr><th>Sales Person</th><th class="text-end">Open Opportunities</th><th class="text-end">Pipeline Value</th><th class="text-end">Won Amount</th></tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Data.TeamPerformance.Count == 0)
+                            {
+                                <tr><td colspan="4" class="text-center text-muted py-3">No data.</td></tr>
+                            }
+                            @foreach (var t in Model.Data.TeamPerformance)
+                            {
+                                <tr>
+                                    <td>@t.UserName</td>
+                                    <td class="text-end">@t.OpenOpportunities</td>
+                                    <td class="text-end">@Ui.Currency(t.PipelineValue)</td>
+                                    <td class="text-end">@Ui.Currency(t.WonAmount)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/lib/chart.js/chart.umd.min.js"></script>
+    <script>
+        // Chart data comes from the server (already filtered by the user's role / scope)
+        const charts = @Html.Raw(chartJson);
+
+        new Chart(document.getElementById('leadStatusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: charts.leadStatus.labels,
+                datasets: [{
+                    data: charts.leadStatus.data,
+                    backgroundColor: ['#0d6efd', '#0dcaf0', '#198754', '#adb5bd', '#dc3545', '#212529']
+                }]
+            },
+            options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        new Chart(document.getElementById('pipelineChart'), {
+            type: 'bar',
+            data: {
+                labels: charts.opportunityPipeline.labels,
+                datasets: [
+                    { label: 'Count', data: charts.opportunityPipeline.counts, backgroundColor: 'rgba(13,110,253,0.7)', yAxisID: 'y' },
+                    { label: 'Amount (INR)', data: charts.opportunityPipeline.amounts, backgroundColor: 'rgba(25,135,84,0.6)', yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Count' }, ticks: { precision: 0 } },
+                    y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Amount' }, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('monthlySalesChart'), {
+            type: 'line',
+            data: {
+                labels: charts.monthlySales.labels,
+                datasets: [
+                    { label: 'Won Amount', data: charts.monthlySales.won, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.15)', tension: 0.3 },
+                    { label: 'Lost Amount', data: charts.monthlySales.lost, borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.15)', tension: 0.3 }
+                ]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+    </script>
+}

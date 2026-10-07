@@ -1,0 +1,123 @@
+@model OpportunityIndexViewModel
+@{
+    ViewData["Title"] = "Opportunities";
+    var canDelete = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">Opportunities</h1>
+        <p class="text-muted small mb-0">Sales opportunities and pipeline stages</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Pipeline" class="btn btn-outline-secondary"><i class="bi bi-kanban me-1"></i>Pipeline View</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Opportunity</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <!-- Search and filters -->
+        <form method="get" class="row g-2 mb-3 auto-submit">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" name="search" value="@Model.Query.Search" class="form-control" placeholder="Search by opportunity name" aria-label="Search opportunities" />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="customerId" class="form-select" aria-label="Filter by customer">
+                    <option value="">All Customers</option>
+                    @foreach (var c in Model.Customers)
+                    {
+                        <option value="@c.Value" selected="@(Model.Query.CustomerId?.ToString() == c.Value)">@c.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <select name="stage" class="form-select" aria-label="Filter by stage">
+                    <option value="">All Stages</option>
+                    @foreach (var s in OpportunityStages.All)
+                    {
+                        <option value="@s" selected="@(Model.Query.Stage == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <select name="status" class="form-select" aria-label="Filter by status">
+                    <option value="">All Statuses</option>
+                    @foreach (var s in new[] { "Open", "Won", "Lost" })
+                    {
+                        <option value="@s" selected="@(Model.Query.Status == s)">@s</option>
+                    }
+                </select>
+            </div>
+            @if (Model.Users.Count > 1)
+            {
+                <div class="col-md-2">
+                    <select name="assignedTo" class="form-select" aria-label="Filter by assigned user">
+                        <option value="">All Owners</option>
+                        @foreach (var u in Model.Users)
+                        {
+                            <option value="@u.Value" selected="@(Model.Query.AssignedTo?.ToString() == u.Value)">@u.Text</option>
+                        }
+                    </select>
+                </div>
+            }
+            <input type="hidden" name="sortBy" value="@Model.Query.SortBy" />
+            <input type="hidden" name="sortOrder" value="@Model.Query.SortOrder" />
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        @Ui.SortHeader(Context.Request, "opportunityName", "Opportunity")
+                        <th>Customer</th>
+                        @Ui.SortHeader(Context.Request, "stage", "Stage")
+                        @Ui.SortHeader(Context.Request, "amount", "Amount")
+                        @Ui.SortHeader(Context.Request, "probability", "Probability")
+                        <th class="text-end">Weighted</th>
+                        @Ui.SortHeader(Context.Request, "expectedCloseDate", "Close Date")
+                        <th>Owner</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Result.Data.Count == 0)
+                    {
+                        <tr><td colspan="9" class="text-center text-muted py-4">No opportunities found.</td></tr>
+                    }
+                    @foreach (var o in Model.Result.Data)
+                    {
+                        <tr>
+                            <td><a asp-action="Details" asp-route-id="@o.Id" class="fw-semibold text-decoration-none">@o.OpportunityName</a></td>
+                            <td><a asp-controller="Customers" asp-action="Details" asp-route-id="@o.CustomerId" class="text-decoration-none">@o.CustomerName</a></td>
+                            <td>@Ui.Badge(o.Stage)</td>
+                            <td class="text-end text-nowrap">@Ui.Currency(o.Amount)</td>
+                            <td class="text-end">@o.Probability%</td>
+                            <td class="text-end text-nowrap">@Ui.Currency(o.WeightedAmount)</td>
+                            <td class="text-nowrap">@Ui.Date(o.ExpectedCloseDate)</td>
+                            <td>@o.AssignedToName</td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-secondary" title="View" aria-label="View @o.OpportunityName"><i class="bi bi-eye"></i></a>
+                                @if (o.Status == "Open")
+                                {
+                                    <a asp-action="Edit" asp-route-id="@o.Id" class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit @o.OpportunityName"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (canDelete)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@o.Id" method="post" class="d-inline" data-confirm="Are you sure you want to delete @o.OpportunityName? This action will be recorded in the audit log." data-confirm-button="Delete">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete @o.OpportunityName"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pagination" model="Model.Result.Pagination" />
+    </div>
+</div>

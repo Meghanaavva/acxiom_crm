@@ -1,0 +1,41 @@
+@model PagedResult<UserActivityRow>?
+@if (Model == null) { return; }
+
+<div class="table-responsive">
+    <table class="table table-hover table-sm align-middle mb-0">
+        <thead>
+            <tr>
+                @Ui.SortHeader(Context.Request, "userName", "User")
+                @Ui.SortHeader(Context.Request, "role", "Role")
+                @Ui.SortHeader(Context.Request, "totalActions", "Total Actions")
+                @Ui.SortHeader(Context.Request, "logins", "Logins")
+                @Ui.SortHeader(Context.Request, "failedLogins", "Failed Logins")
+                @Ui.SortHeader(Context.Request, "creates", "Creates")
+                @Ui.SortHeader(Context.Request, "updates", "Updates")
+                @Ui.SortHeader(Context.Request, "deletes", "Deletes")
+                @Ui.SortHeader(Context.Request, "lastActivity", "Last Activity")
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Data.Count == 0)
+            {
+                <tr><td colspan="9" class="text-center text-muted py-4">No records found.</td></tr>
+            }
+            @foreach (var r in Model.Data)
+            {
+                <tr>
+                    <td>@r.UserName</td>
+                    <td>@Ui.Badge(r.Role)</td>
+                    <td class="fw-semibold">@r.TotalActions</td>
+                    <td>@r.Logins</td>
+                    <td class="@(r.FailedLogins > 0 ? "text-danger" : "")">@r.FailedLogins</td>
+                    <td>@r.Creates</td>
+                    <td>@r.Updates</td>
+                    <td>@r.Deletes</td>
+                    <td class="text-nowrap">@Ui.DateTime(r.LastActivity)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<partial name="_Pagination" model="Model.Pagination" />

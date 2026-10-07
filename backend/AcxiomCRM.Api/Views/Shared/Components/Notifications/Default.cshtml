@@ -1,0 +1,27 @@
+@model NotificationsViewModel
+
+<div class="dropdown">
+    <button class="btn btn-link text-white position-relative p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications (@Model.Count)">
+        <i class="bi bi-bell fs-5"></i>
+        @if (Model.Count > 0)
+        {
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-count">@(Model.Count > 99 ? "99+" : Model.Count)</span>
+        }
+    </button>
+    <div class="dropdown-menu dropdown-menu-end p-0 shadow notification-menu">
+        <div class="px-3 py-2 border-bottom fw-semibold">Notifications</div>
+        @if (Model.Count == 0)
+        {
+            <div class="px-3 py-3 small text-muted">No pending follow-ups for today.</div>
+        }
+        @foreach (var item in Model.Overdue)
+        {
+            @await Html.PartialAsync("_NotificationItem", (item, "Overdue", "danger"))
+        }
+        @foreach (var item in Model.Today)
+        {
+            @await Html.PartialAsync("_NotificationItem", (item, "Today", "primary"))
+        }
+        <a asp-controller="FollowUps" asp-action="Index" class="dropdown-item text-center small border-top py-2">View all follow-ups</a>
+    </div>
+</div>

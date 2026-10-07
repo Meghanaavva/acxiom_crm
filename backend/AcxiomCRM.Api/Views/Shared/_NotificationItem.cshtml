@@ -1,0 +1,11 @@
+@model (FollowUpDto Item, string Label, string Color)
+
+<a asp-controller="FollowUps" asp-action="Index" class="dropdown-item py-2 border-bottom">
+    <div class="d-flex justify-content-between">
+        <span class="text-truncate me-2 small fw-semibold">@Model.Item.Subject</span>
+        <span class="badge bg-@Model.Color">@Model.Label</span>
+    </div>
+    <div class="small text-muted text-truncate">
+        @(Model.Item.CustomerName ?? Model.Item.LeadName ?? Model.Item.OpportunityName ?? "-") · @Ui.Date(Model.Item.FollowUpDate)
+    </div>
+</a>

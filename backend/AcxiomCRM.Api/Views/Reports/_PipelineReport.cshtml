@@ -1,0 +1,95 @@
+@model PipelineReportDto?
+@using System.Text.Json
+@if (Model == null) { return; }
+@{
+    var chartData = JsonSerializer.Serialize(new
+    {
+        labels = Model.ByStage.Select(s => s.Stage),
+        amounts = Model.ByStage.Select(s => s.Amount),
+        weighted = Model.ByStage.Select(s => s.WeightedAmount),
+    });
+}
+
+<p class="small text-muted">Open opportunities only (Qualification, Proposal, Negotiation). Weighted = Amount × Probability / 100.</p>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <h2 class="h6">Stage wise</h2>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead><tr><th>Stage</th><th class="text-end">Count</th><th class="text-end">Amount</th><th class="text-end">Weighted</th></tr></thead>
+                <tbody>
+                    @foreach (var s in Model.ByStage)
+                    {
+                        <tr>
+                            <td>@Ui.Badge(s.Stage)</td>
+                            <td class="text-end">@s.Count</td>
+                            <td class="text-end">@Ui.Currency(s.Amount)</td>
+                            <td class="text-end">@Ui.Currency(s.WeightedAmount)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="fw-semibold">
+                    <tr>
+                        <td>Total</td>
+                        <td class="text-end">@Model.Totals.Count</td>
+                        <td class="text-end">@Ui.Currency(Model.Totals.Amount)</td>
+                        <td class="text-end">@Ui.Currency(Model.Totals.WeightedAmount)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <canvas id="pipelineReportChart" height="200" role="img" aria-label="Pipeline amount by stage chart"></canvas>
+    </div>
+    <div class="col-12">
+        <h2 class="h6">Owner wise</h2>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead><tr><th>Owner</th><th class="text-end">Open Opportunities</th><th class="text-end">Amount</th><th class="text-end">Weighted</th></tr></thead>
+                <tbody>
+                    @if (Model.ByOwner.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-3">No open opportunities.</td></tr>
+                    }
+                    @foreach (var o in Model.ByOwner)
+                    {
+                        <tr>
+                            <td>@o.OwnerName</td>
+                            <td class="text-end">@o.Count</td>
+                            <td class="text-end">@Ui.Currency(o.Amount)</td>
+                            <td class="text-end">@Ui.Currency(o.WeightedAmount)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="fw-semibold">
+                    <tr>
+                        <td>Total</td>
+                        <td class="text-end">@Model.Totals.Count</td>
+                        <td class="text-end">@Ui.Currency(Model.Totals.Amount)</td>
+                        <td class="text-end">@Ui.Currency(Model.Totals.WeightedAmount)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Chart.js is loaded at the end of the page, so draw the chart once the page is ready
+    document.addEventListener('DOMContentLoaded', function () {
+        const data = @Html.Raw(chartData);
+        new Chart(document.getElementById('pipelineReportChart'), {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    { label: 'Amount', data: data.amounts, backgroundColor: 'rgba(13,110,253,0.7)' },
+                    { label: 'Weighted', data: data.weighted, backgroundColor: 'rgba(25,135,84,0.6)' }
+                ]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+    });
+</script>

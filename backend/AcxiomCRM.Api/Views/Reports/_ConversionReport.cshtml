@@ -1,0 +1,55 @@
+@model ConversionReportDto?
+@if (Model == null) { return; }
+@{
+    var stats = new List<(string Label, string Value, string Color)>
+    {
+        ("Total Leads", Model.TotalLeads.ToString(), "primary"),
+        ("Converted Leads", Model.ConvertedLeads.ToString(), "success"),
+        ("Lost Leads", Model.LostLeads.ToString(), "danger"),
+        ("Conversion Rate", Model.ConversionRate + "%", "info"),
+        ("Total Opportunities", Model.TotalOpportunities.ToString(), "primary"),
+        ("Won Opportunities", Model.WonOpportunities.ToString(), "success"),
+        ("Lost Opportunities", Model.LostOpportunities.ToString(), "danger"),
+        ("Win Rate", Model.WinRate + "%", "info"),
+    };
+}
+
+<div class="row g-3 mb-3">
+    @foreach (var s in stats)
+    {
+        <div class="col-6 col-md-3">
+            <div class="border rounded p-3 h-100">
+                <div class="small text-muted">@s.Label</div>
+                <div class="h5 fw-bold mb-0 text-@s.Color">@s.Value</div>
+            </div>
+        </div>
+    }
+    <div class="col-12">
+        <div class="border rounded p-3">
+            <span class="small text-muted">Won Amount</span>
+            <span class="h5 fw-bold ms-2 text-success">@Ui.Currency(Model.WonAmount)</span>
+        </div>
+    </div>
+</div>
+
+<h2 class="h6">Lead conversion by source</h2>
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0">
+        <thead><tr><th>Source</th><th class="text-end">Total Leads</th><th class="text-end">Converted</th><th class="text-end">Conversion Rate</th></tr></thead>
+        <tbody>
+            @if (Model.BySource.Count == 0)
+            {
+                <tr><td colspan="4" class="text-center text-muted py-3">No leads found.</td></tr>
+            }
+            @foreach (var r in Model.BySource)
+            {
+                <tr>
+                    <td>@r.Source</td>
+                    <td class="text-end">@r.Total</td>
+                    <td class="text-end">@r.Converted</td>
+                    <td class="text-end">@r.ConversionRate%</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

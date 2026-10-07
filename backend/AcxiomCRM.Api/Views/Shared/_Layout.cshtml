@@ -1,0 +1,152 @@
+@inject AcxiomCRM.Api.Services.ICurrentUserService CurrentUserService
+@{
+    var currentUser = await CurrentUserService.GetAsync();
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+
+    // Sidebar menu - items are filtered by role (the server also checks roles on every action)
+    var menu = new List<(string Controller, string Action, string Label, string Icon, string[]? Roles)>
+    {
+        ("Dashboard", "Index", "Dashboard", "bi-speedometer2", null),
+        ("Customers", "Index", "Customers", "bi-people", null),
+        ("Leads", "Index", "Leads", "bi-person-plus", null),
+        ("Opportunities", "Index", "Opportunities", "bi-briefcase", null),
+        ("Opportunities", "Pipeline", "Sales Pipeline", "bi-kanban", null),
+        ("FollowUps", "Index", "Follow-Ups", "bi-calendar-check", null),
+        ("Activities", "Index", "Activities", "bi-activity", null),
+        ("Reports", "Index", "Reports", "bi-bar-chart-line", null),
+        ("Users", "Index", "Users", "bi-person-gear", new[] { Roles.Admin, Roles.Manager }),
+        ("Roles", "Index", "Roles & Permissions", "bi-shield-lock", new[] { Roles.Admin }),
+        ("AuditLogs", "Index", "Audit Log", "bi-journal-text", new[] { Roles.Admin, Roles.Manager }),
+    };
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - AcxiomCRM</title>
+    <link rel="icon" type="image/svg+xml" href="~/favicon.svg" />
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="d-flex flex-column min-vh-100">
+        <!-- Header -->
+        <nav class="navbar navbar-dark bg-primary sticky-top shadow-sm px-3">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link text-white d-lg-none me-2 p-0" type="button" id="sidebarToggle" aria-label="Toggle navigation">
+                    <i class="bi bi-list fs-3"></i>
+                </button>
+                <a class="navbar-brand fw-bold" asp-controller="Dashboard" asp-action="Index">
+                    <i class="bi bi-diagram-3-fill me-2"></i>AcxiomCRM
+                </a>
+            </div>
+
+            <!-- Global search -->
+            <form class="d-none d-md-block mx-3 flex-grow-1 global-search" method="get" asp-controller="Search" asp-action="Index" role="search">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-0"><i class="bi bi-search"></i></span>
+                    <input type="search" name="q" class="form-control border-0" placeholder="Search customers, leads, opportunities..." aria-label="Global search" />
+                </div>
+            </form>
+
+            <div class="d-flex align-items-center gap-2">
+                @await Component.InvokeAsync("Notifications")
+
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle me-1"></i><span class="d-none d-sm-inline">@currentUser.Name</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li class="px-3 py-2 small">
+                            <div class="fw-semibold">@currentUser.Name</div>
+                            <div class="text-muted">@Ui.RoleLabel(currentUser.Role)</div>
+                        </li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword"><i class="bi bi-key me-2"></i>Change Password</a></li>
+                        <li>
+                            <form method="post" asp-controller="Account" asp-action="Logout">
+                                <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Logout</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="d-flex flex-grow-1">
+            <!-- Sidebar -->
+            <aside class="sidebar bg-white border-end" id="sidebar">
+                <ul class="nav flex-column py-3">
+                    @foreach (var item in menu.Where(m => m.Roles == null || m.Roles.Contains(currentUser.Role)))
+                    {
+                        var isActive = item.Controller == controller && (item.Action == "Index" ? action != "Pipeline" : item.Action == action);
+                        <li class="nav-item">
+                            <a class="nav-link sidebar-link @(isActive ? "active" : "")" asp-controller="@item.Controller" asp-action="@item.Action">
+                                <i class="bi @item.Icon me-2"></i>@item.Label
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </aside>
+            <div class="sidebar-backdrop d-lg-none" id="sidebarBackdrop"></div>
+
+            <!-- Page content -->
+            <main class="flex-grow-1 p-3 p-md-4 main-content">
+                @RenderBody()
+            </main>
+        </div>
+
+        <footer class="bg-white border-top py-2 px-3 small text-muted d-flex justify-content-between">
+            <span>&copy; @DateTime.Now.Year AcxiomCRM</span>
+            <span>Customer Relationship Management</span>
+        </footer>
+    </div>
+
+    <!-- Success / error notifications -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        @if (TempData["Success"] is string success)
+        {
+            <div class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive">
+                <div class="d-flex">
+                    <div class="toast-body"><i class="bi bi-check-circle-fill me-2"></i>@success</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        }
+        @if (TempData["Error"] is string error)
+        {
+            <div class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive">
+                <div class="d-flex">
+                    <div class="toast-body"><i class="bi bi-x-circle-fill me-2"></i>@error</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Confirmation dialog used by every form with data-confirm="..." (see site.js) -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalTitle">Please confirm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmModalMessage"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmModalOk">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

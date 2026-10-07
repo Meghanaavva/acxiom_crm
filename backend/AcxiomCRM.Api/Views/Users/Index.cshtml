@@ -1,0 +1,181 @@
+@model UserIndexViewModel
+@{
+    ViewData["Title"] = "Users";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">Users</h1>
+        <p class="text-muted small mb-0">@(Model.IsAdmin ? "Manage application users, roles and account status" : "Members of your team (read only)")</p>
+    </div>
+    @if (Model.IsAdmin)
+    {
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add User</a>
+    }
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="get" class="row g-2 mb-3 auto-submit">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" name="search" value="@Model.Query.Search" class="form-control" placeholder="Search by name or email" aria-label="Search users" />
+                    <button class="btn btn-outline-primary" type="submit">Search</button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="role" class="form-select" aria-label="Filter by role">
+                    <option value="">All Roles</option>
+                    @foreach (var r in Roles.All)
+                    {
+                        <option value="@r" selected="@(Model.Query.Role == r)">@Ui.RoleLabel(r)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="isActive" class="form-select" aria-label="Filter by status">
+                    <option value="">All Statuses</option>
+                    <option value="true" selected="@(Model.Query.IsActive == true)">Active</option>
+                    <option value="false" selected="@(Model.Query.IsActive == false)">Inactive</option>
+                </select>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Manager</th>
+                        <th>Status</th>
+                        <th>Lockout</th>
+                        <th class="text-center">Failed Attempts</th>
+                        <th>Last Login</th>
+                        @if (Model.IsAdmin)
+                        {
+                            <th class="text-end">Actions</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Result.Data.Count == 0)
+                    {
+                        <tr><td colspan="9" class="text-center text-muted py-4">No users found.</td></tr>
+                    }
+                    @foreach (var u in Model.Result.Data)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@u.Name</td>
+                            <td>@u.Email</td>
+                            <td>@Ui.Badge(u.Role)</td>
+                            <td>@(u.ManagerName ?? "-")</td>
+                            <td>
+                                @if (u.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </td>
+                            <td>
+                                @if (u.IsLockedOut)
+                                {
+                                    <span class="badge bg-danger" title="Locked until @Ui.DateTime(u.LockoutEnd)"><i class="bi bi-lock-fill me-1"></i>Locked</span>
+                                    <div class="small text-muted">until @Ui.DateTime(u.LockoutEnd)</div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Not locked</span>
+                                }
+                            </td>
+                            <td class="text-center">@u.FailedLoginCount</td>
+                            <td class="text-nowrap small">@Ui.DateTime(u.LastLoginAt)</td>
+                            @if (Model.IsAdmin)
+                            {
+                                <td class="text-end text-nowrap">
+                                    <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit @u.Name"><i class="bi bi-pencil"></i></a>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary reset-password-btn" title="Reset password" aria-label="Reset password of @u.Name"
+                                            data-bs-toggle="modal" data-bs-target="#resetPasswordModal"
+                                            data-user-id="@u.Id" data-user-name="@u.Name">
+                                        <i class="bi bi-key"></i>
+                                    </button>
+                                    @if (u.IsLockedOut)
+                                    {
+                                        <form asp-action="Unlock" asp-route-id="@u.Id" method="post" class="d-inline"
+                                              data-confirm="Unlock the account of @u.Name?" data-confirm-button="Unlock" data-confirm-variant="btn-primary">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning" title="Unlock" aria-label="Unlock @u.Name"><i class="bi bi-unlock"></i></button>
+                                        </form>
+                                    }
+                                    <form asp-action="SetStatus" asp-route-id="@u.Id" method="post" class="d-inline"
+                                          data-confirm="@(u.IsActive ? $"Deactivate {u.Name}? The user will be logged out and cannot login." : $"Activate {u.Name}?")"
+                                          data-confirm-button="@(u.IsActive ? "Deactivate" : "Activate")"
+                                          data-confirm-variant="@(u.IsActive ? "btn-danger" : "btn-success")">
+                                        <input type="hidden" name="isActive" value="@(u.IsActive ? "false" : "true")" />
+                                        @if (u.IsActive)
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Deactivate" aria-label="Deactivate @u.Name"><i class="bi bi-person-x"></i></button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Activate" aria-label="Activate @u.Name"><i class="bi bi-person-check"></i></button>
+                                        }
+                                    </form>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pagination" model="Model.Result.Pagination" />
+    </div>
+</div>
+
+@if (Model.IsAdmin)
+{
+    <!-- Reset password dialog (the form action is set when a row button is clicked) -->
+    <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="post" id="resetPasswordForm" class="modal-content" novalidate>
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resetPasswordTitle">Reset Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">Set a new password for <strong id="resetPasswordUser"></strong>. The account will also be unlocked.</p>
+                    <label for="NewPassword" class="form-label">New Password <span class="text-danger">*</span></label>
+                    <input type="password" id="NewPassword" name="NewPassword" class="form-control" autocomplete="new-password"
+                           data-val="true" data-val-required="New Password is required." data-val-passwordpolicy="Password" />
+                    <span class="field-validation-valid" data-valmsg-for="NewPassword" data-valmsg-replace="true"></span>
+                    <div class="form-text">Min 8 characters with upper case, lower case, number and special character.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Point the reset password form to the selected user
+        document.querySelectorAll('.reset-password-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var form = document.getElementById('resetPasswordForm');
+                form.action = '@Url.Action("ResetPassword")/' + btn.dataset.userId;
+                document.getElementById('resetPasswordUser').textContent = btn.dataset.userName;
+                document.getElementById('NewPassword').value = '';
+            });
+        });
+    </script>
+}

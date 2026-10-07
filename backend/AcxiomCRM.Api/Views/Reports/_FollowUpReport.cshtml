@@ -1,0 +1,35 @@
+@model PagedResult<FollowUpReportRow>?
+@if (Model == null) { return; }
+
+<div class="table-responsive">
+    <table class="table table-hover table-sm align-middle mb-0">
+        <thead>
+            <tr>
+                @Ui.SortHeader(Context.Request, "subject", "Subject")
+                @Ui.SortHeader(Context.Request, "followUpType", "Type")
+                @Ui.SortHeader(Context.Request, "followUpDate", "Date")
+                @Ui.SortHeader(Context.Request, "status", "Status")
+                <th>Related To</th>
+                <th>Assigned To</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Data.Count == 0)
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4">No records found.</td></tr>
+            }
+            @foreach (var r in Model.Data)
+            {
+                <tr class="@(r.IsOverdue ? "table-danger" : "")">
+                    <td>@r.Subject</td>
+                    <td>@r.FollowUpType</td>
+                    <td class="text-nowrap">@Ui.Date(r.FollowUpDate)</td>
+                    <td>@Ui.Badge(r.Status) @if (r.IsOverdue) { @Ui.Badge("Overdue") }</td>
+                    <td>@r.RelatedTo</td>
+                    <td>@r.AssignedToName</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<partial name="_Pagination" model="Model.Pagination" />

@@ -1,0 +1,81 @@
+@model UserFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit User" : "Add User";
+}
+
+@await Html.PartialAsync("_PageHeader", (isEdit ? "Edit User" : "Add User", (string?)"Fields marked * are mandatory"))
+
+<div class="card" style="max-width: 760px;">
+    <div class="card-body">
+        <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Email" class="form-label">Email <span class="text-danger">*</span></label>
+                    <input asp-for="Email" type="email" class="form-control" autocomplete="off" />
+                    <span asp-validation-for="Email" class="field-validation-error"></span>
+                </div>
+
+                @if (!isEdit)
+                {
+                    <div class="col-md-6">
+                        <label asp-for="Password" class="form-label">Password <span class="text-danger">*</span></label>
+                        <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" data-val-passwordpolicy="Password" />
+                        <span asp-validation-for="Password" class="field-validation-error"></span>
+                        <div class="form-text">Min 8 characters with upper case, lower case, number and special character.</div>
+                    </div>
+                }
+
+                <div class="col-md-6">
+                    <label asp-for="Role" class="form-label">Role <span class="text-danger">*</span></label>
+                    <select asp-for="Role" asp-items="Model.RoleOptions" class="form-select"></select>
+                    <span asp-validation-for="Role" class="field-validation-error"></span>
+                </div>
+
+                <div class="col-md-6" id="managerField">
+                    <label asp-for="ManagerId" class="form-label">Reports To (Manager)</label>
+                    <select asp-for="ManagerId" asp-items="Model.Managers" class="form-select">
+                        <option value="">-- No manager --</option>
+                    </select>
+                    <span asp-validation-for="ManagerId" class="field-validation-error"></span>
+                    <div class="form-text">Managers can see the records of their team members.</div>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input asp-for="Active" class="form-check-input" type="checkbox" role="switch" />
+                        <label asp-for="Active" class="form-check-label">Active (user can login)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">@(isEdit ? "Update User" : "Save User")</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Manager is only needed for Sales Executives
+        (function () {
+            var role = document.getElementById('Role');
+            var managerField = document.getElementById('managerField');
+            function toggleManager() {
+                managerField.style.display = role.value === '@Roles.SalesExecutive' ? '' : 'none';
+            }
+            role.addEventListener('change', toggleManager);
+            toggleManager();
+        })();
+    </script>
+}

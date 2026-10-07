@@ -1,0 +1,10 @@
+@{
+    var code = (int)(ViewData["Code"] ?? 404);
+    ViewData["Title"] = code == 404 ? "Not Found" : "Error";
+    Layout = User.Identity?.IsAuthenticated == true ? "_Layout" : "_AuthLayout";
+}
+<div class="text-center py-5 @(User.Identity?.IsAuthenticated == true ? "" : "card")">
+    <h1 class="display-4 fw-bold text-primary">@code</h1>
+    <p class="lead">@(code == 404 ? "The page or record you are looking for does not exist." : "The request could not be completed.")</p>
+    <a href="/" class="btn btn-primary">Go to Dashboard</a>
+</div>

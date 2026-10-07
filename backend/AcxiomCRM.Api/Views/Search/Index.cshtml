@@ -1,0 +1,92 @@
+@model SearchViewModel
+@{
+    ViewData["Title"] = "Search";
+}
+
+@await Html.PartialAsync("_PageHeader", ("Search Results",
+    (string?)(Model.Query.Length > 0 ? $"{Model.Total} result(s) for \"{Model.Query}\"" : "Type something in the search box")))
+
+<form method="get" class="mb-4" role="search" style="max-width: 520px;">
+    <div class="input-group">
+        <input type="search" name="q" value="@Model.Query" class="form-control" placeholder="Search customers, leads, opportunities..." aria-label="Search" />
+        <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Search</button>
+    </div>
+</form>
+
+@if (Model.Query.Length > 0)
+{
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold"><i class="bi bi-people me-2"></i>Customers <span class="badge bg-secondary ms-1">@Model.Customers.Pagination.Total</span></span>
+                    <a asp-controller="Customers" asp-action="Index" asp-route-search="@Model.Query" class="small">View all</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    @if (Model.Customers.Data.Count == 0)
+                    {
+                        <div class="list-group-item text-muted small">No matches.</div>
+                    }
+                    @foreach (var c in Model.Customers.Data)
+                    {
+                        <a asp-controller="Customers" asp-action="Details" asp-route-id="@c.Id" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-semibold">@c.CustomerName</span>
+                                @Ui.Badge(c.Status)
+                            </div>
+                            <div class="small text-muted">@(c.CompanyName ?? "-") · @c.Email</div>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold"><i class="bi bi-person-plus me-2"></i>Leads <span class="badge bg-secondary ms-1">@Model.Leads.Pagination.Total</span></span>
+                    <a asp-controller="Leads" asp-action="Index" asp-route-search="@Model.Query" class="small">View all</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    @if (Model.Leads.Data.Count == 0)
+                    {
+                        <div class="list-group-item text-muted small">No matches.</div>
+                    }
+                    @foreach (var l in Model.Leads.Data)
+                    {
+                        <a asp-controller="Leads" asp-action="Details" asp-route-id="@l.Id" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-semibold">@l.LeadName</span>
+                                @Ui.Badge(l.Status)
+                            </div>
+                            <div class="small text-muted">@(l.CompanyName ?? "-") · @l.Source</div>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold"><i class="bi bi-briefcase me-2"></i>Opportunities <span class="badge bg-secondary ms-1">@Model.Opportunities.Pagination.Total</span></span>
+                    <a asp-controller="Opportunities" asp-action="Index" asp-route-search="@Model.Query" class="small">View all</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    @if (Model.Opportunities.Data.Count == 0)
+                    {
+                        <div class="list-group-item text-muted small">No matches.</div>
+                    }
+                    @foreach (var o in Model.Opportunities.Data)
+                    {
+                        <a asp-controller="Opportunities" asp-action="Details" asp-route-id="@o.Id" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-semibold">@o.OpportunityName</span>
+                                @Ui.Badge(o.Stage)
+                            </div>
+                            <div class="small text-muted">@o.CustomerName · @Ui.Currency(o.Amount)</div>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

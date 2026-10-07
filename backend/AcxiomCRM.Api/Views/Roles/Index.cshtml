@@ -1,0 +1,67 @@
+@model RolesViewModel
+@{
+    ViewData["Title"] = "Roles & Permissions";
+    var roleNames = Model.Permissions.Matrix.Keys.ToList();
+}
+
+@await Html.PartialAsync("_PageHeader", ("Roles & Permissions", (string?)"Each user has exactly one primary role. Permissions are enforced on the server."))
+
+<div class="row g-3 mb-3">
+    @foreach (var role in Model.Roles)
+    {
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h2 class="h6 mb-0">@Ui.Badge(role.Name)</h2>
+                        <span class="badge bg-light text-dark border"><i class="bi bi-people me-1"></i>@role.UserCount user(s)</span>
+                    </div>
+                    <p class="small text-muted mb-0">@(role.Description ?? "-")</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card">
+    <div class="card-header bg-white fw-semibold"><i class="bi bi-shield-lock me-2"></i>Permission Matrix</div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Module</th>
+                        @foreach (var role in roleNames)
+                        {
+                            <th>@Ui.RoleLabel(role)</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var module in Model.Permissions.Modules)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@module</td>
+                            @foreach (var role in roleNames)
+                            {
+                                var access = Model.Permissions.Matrix[role].GetValueOrDefault(module, "No");
+                                var css = access == "No" ? "text-danger" : access is "Full" or "All" ? "text-success fw-semibold" : "";
+                                <td class="@css">
+                                    @if (access == "No")
+                                    {
+                                        <i class="bi bi-x-circle me-1"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check-circle me-1"></i>
+                                    }
+                                    @access
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

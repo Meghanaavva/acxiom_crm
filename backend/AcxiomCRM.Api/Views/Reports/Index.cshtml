@@ -1,0 +1,195 @@
+@model ReportsViewModel
+@{
+    ViewData["Title"] = "Reports";
+    var q = Model.Query;
+    var type = Model.Type;
+
+    // Status / stage options depend on the report
+    string[]? statusOptions = type switch
+    {
+        "customers" => CustomerStatuses.All,
+        "leads" => LeadStatuses.All,
+        "followups" => FollowUpStatuses.All.Append("Overdue").ToArray(),
+        _ => null,
+    };
+    var showOwner = type is not ("user-activity" or "audit") && Model.Users.Count > 1;
+    var dateLabel = type == "followups" ? "Follow-Up Date" : "Created";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">Reports</h1>
+        <p class="text-muted small mb-0">Filter, sort and export CRM data. Data is limited to records you are allowed to see.</p>
+    </div>
+</div>
+
+<ul class="nav nav-tabs">
+    @foreach (var tab in Model.Tabs)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(tab.Type == type ? "active" : "")" asp-action="Index" asp-route-type="@tab.Type" aria-current="@(tab.Type == type ? "page" : null)">
+                <i class="bi @tab.Icon me-1"></i>@tab.Label
+            </a>
+        </li>
+    }
+</ul>
+
+<div class="card rounded-top-0 border-top-0">
+    <div class="card-body">
+        <!-- Filters -->
+        <form method="get" asp-action="Index" class="row g-2 align-items-end mb-3 auto-submit">
+            <input type="hidden" name="type" value="@type" />
+            <input type="hidden" name="sortBy" value="@q.SortBy" />
+            <input type="hidden" name="sortOrder" value="@q.SortOrder" />
+
+            @if (statusOptions != null)
+            {
+                <div class="col-sm-6 col-md-2">
+                    <label for="status" class="form-label small mb-1">Status</label>
+                    <select id="status" name="status" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        @foreach (var s in statusOptions)
+                        {
+                            <option value="@s" selected="@(q.Status == s)">@s</option>
+                        }
+                    </select>
+                </div>
+            }
+            @if (type == "leads")
+            {
+                <div class="col-sm-6 col-md-2">
+                    <label for="source" class="form-label small mb-1">Source</label>
+                    <select id="source" name="source" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        @foreach (var s in LeadSources.All)
+                        {
+                            <option value="@s" selected="@(q.Source == s)">@s</option>
+                        }
+                    </select>
+                </div>
+            }
+            @if (type == "opportunities")
+            {
+                <div class="col-sm-6 col-md-2">
+                    <label for="stage" class="form-label small mb-1">Stage</label>
+                    <select id="stage" name="stage" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        @foreach (var s in OpportunityStages.All)
+                        {
+                            <option value="@s" selected="@(q.Stage == s)">@s</option>
+                        }
+                    </select>
+                </div>
+            }
+            @if (showOwner)
+            {
+                <div class="col-sm-6 col-md-2">
+                    <label for="assignedTo" class="form-label small mb-1">Owner</label>
+                    <select id="assignedTo" name="assignedTo" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        @foreach (var u in Model.Users)
+                        {
+                            <option value="@u.Value" selected="@(q.AssignedTo?.ToString() == u.Value)">@u.Text</option>
+                        }
+                    </select>
+                </div>
+            }
+            @if (type == "audit")
+            {
+                var a = Model.AuditQuery;
+                <div class="col-sm-6 col-md-2">
+                    <label for="userId" class="form-label small mb-1">User</label>
+                    <select id="userId" name="userId" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        @foreach (var u in Model.Users)
+                        {
+                            <option value="@u.Value" selected="@(a.UserId?.ToString() == u.Value)">@u.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-sm-6 col-md-2">
+                    <label for="entityName" class="form-label small mb-1">Module</label>
+                    <select id="entityName" name="entityName" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        @foreach (var e in Model.AuditFilters.Entities)
+                        {
+                            <option value="@e" selected="@(a.EntityName == e)">@e</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-sm-6 col-md-2">
+                    <label for="action" class="form-label small mb-1">Action</label>
+                    <select id="action" name="action" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        @foreach (var act in Model.AuditFilters.Actions)
+                        {
+                            <option value="@act" selected="@(a.Action == act)">@act</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-sm-6 col-md-1">
+                    <label for="result" class="form-label small mb-1">Result</label>
+                    <select id="result" name="result" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        <option value="Success" selected="@(a.Result == "Success")">Success</option>
+                        <option value="Failure" selected="@(a.Result == "Failure")">Failure</option>
+                    </select>
+                </div>
+            }
+            <div class="col-sm-6 col-md-2">
+                <label for="dateFrom" class="form-label small mb-1">@dateLabel From</label>
+                <input type="date" id="dateFrom" name="dateFrom" value="@(type == "audit" ? Model.AuditQuery.DateFrom : q.DateFrom)" class="form-control form-control-sm" />
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <label for="dateTo" class="form-label small mb-1">@dateLabel To</label>
+                <input type="date" id="dateTo" name="dateTo" value="@(type == "audit" ? Model.AuditQuery.DateTo : q.DateTo)" class="form-control form-control-sm" />
+            </div>
+            <div class="col-auto ms-auto d-flex gap-2">
+                <a asp-action="Index" asp-route-type="@type" class="btn btn-sm btn-outline-secondary">Clear</a>
+                <a href="@Model.ExportUrl" class="btn btn-sm btn-success"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV</a>
+            </div>
+        </form>
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-warning">@Model.ErrorMessage</div>
+        }
+        else
+        {
+            @switch (type)
+            {
+                case "leads":
+                    @await Html.PartialAsync("_LeadReport", Model.Data as PagedResult<LeadReportRow>)
+                    break;
+                case "followups":
+                    @await Html.PartialAsync("_FollowUpReport", Model.Data as PagedResult<FollowUpReportRow>)
+                    break;
+                case "opportunities":
+                    @await Html.PartialAsync("_OpportunityReport", Model.Data as PagedResult<OpportunityReportRow>)
+                    break;
+                case "pipeline":
+                    @await Html.PartialAsync("_PipelineReport", Model.Data as PipelineReportDto)
+                    break;
+                case "conversion":
+                    @await Html.PartialAsync("_ConversionReport", Model.Data as ConversionReportDto)
+                    break;
+                case "user-activity":
+                    @await Html.PartialAsync("_UserActivityReport", Model.Data as PagedResult<UserActivityRow>)
+                    break;
+                case "audit":
+                    @await Html.PartialAsync("_AuditReport", Model.Data as PagedResult<AuditLogDto>)
+                    break;
+                default:
+                    @await Html.PartialAsync("_CustomerReport", Model.Data as PagedResult<CustomerReportRow>)
+                    break;
+            }
+        }
+    </div>
+</div>
+
+@section Scripts {
+    @if (type == "pipeline")
+    {
+        <script src="~/lib/chart.js/chart.umd.min.js"></script>
+    }
+}

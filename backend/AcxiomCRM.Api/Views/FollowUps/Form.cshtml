@@ -1,0 +1,90 @@
+@model FollowUpFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit Follow-Up" : "Schedule Follow-Up";
+    var today = DateHelper.Today().ToString("yyyy-MM-dd");
+}
+
+@await Html.PartialAsync("_PageHeader", (isEdit ? "Edit Follow-Up" : "Schedule Follow-Up", (string?)"Fields marked * are mandatory"))
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Subject" class="form-label">Subject <span class="text-danger">*</span></label>
+                    <input asp-for="Subject" class="form-control" />
+                    <span asp-validation-for="Subject" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="FollowUpType" class="form-label">Type <span class="text-danger">*</span></label>
+                    <select asp-for="FollowUpType" asp-items="Model.Types" class="form-select"></select>
+                    <span asp-validation-for="FollowUpType" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="FollowUpDate" class="form-label">Follow-up Date <span class="text-danger">*</span></label>
+                    <input asp-for="FollowUpDate" type="date" class="form-control" min="@today"
+                           data-val-notpast="Follow-up date cannot be earlier than today." />
+                    <span asp-validation-for="FollowUpDate" class="field-validation-error"></span>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-text mb-n2">Link the follow-up to at least one customer, lead or opportunity.</div>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="CustomerId" class="form-label">Related Customer</label>
+                    <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select"
+                            data-val="true"
+                            data-val-atleastone="Select a related customer, lead or opportunity."
+                            data-val-atleastone-fields="CustomerId,LeadId,OpportunityId">
+                        <option value="">-- None --</option>
+                    </select>
+                    <span asp-validation-for="CustomerId" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="LeadId" class="form-label">Related Lead</label>
+                    <select asp-for="LeadId" asp-items="Model.Leads" class="form-select">
+                        <option value="">-- None --</option>
+                    </select>
+                    <span asp-validation-for="LeadId" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="OpportunityId" class="form-label">Related Opportunity</label>
+                    <select asp-for="OpportunityId" asp-items="Model.Opportunities" class="form-select">
+                        <option value="">-- None --</option>
+                    </select>
+                    <span asp-validation-for="OpportunityId" class="field-validation-error"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="AssignedTo" class="form-label">Assigned To</label>
+                    <select asp-for="AssignedTo" asp-items="Model.Users" class="form-select"></select>
+                    <span asp-validation-for="AssignedTo" class="field-validation-error"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Remarks" class="form-label">Remarks</label>
+                    <textarea asp-for="Remarks" rows="3" class="form-control"></textarea>
+                    <span asp-validation-for="Remarks" class="field-validation-error"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">@(isEdit ? "Update Follow-Up" : "Save Follow-Up")</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // re-check the "at least one related record" rule when lead / opportunity changes
+        $('#LeadId, #OpportunityId').on('change', function () {
+            var validator = $(this.form).data('validator');
+            if (validator) validator.element('#CustomerId');
+        });
+    </script>
+}

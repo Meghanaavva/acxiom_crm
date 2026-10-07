@@ -1,0 +1,71 @@
+@model ActivityFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit Activity" : "Log Activity";
+}
+
+@await Html.PartialAsync("_PageHeader", (isEdit ? "Edit Activity" : "Log Activity", (string?)"Fields marked * are mandatory"))
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="ActivityType" class="form-label">Activity Type <span class="text-danger">*</span></label>
+                    <select asp-for="ActivityType" asp-items="Model.Types" class="form-select"></select>
+                    <span asp-validation-for="ActivityType" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-8">
+                    <label asp-for="Subject" class="form-label">Subject <span class="text-danger">*</span></label>
+                    <input asp-for="Subject" class="form-control" />
+                    <span asp-validation-for="Subject" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ActivityDate" class="form-label">Date &amp; Time <span class="text-danger">*</span></label>
+                    <input asp-for="ActivityDate" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" />
+                    <span asp-validation-for="ActivityDate" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Status" class="form-label">Status <span class="text-danger">*</span></label>
+                    <select asp-for="Status" asp-items="Model.Statuses" class="form-select"></select>
+                    <span asp-validation-for="Status" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="AssignedTo" class="form-label">Assigned To</label>
+                    <select asp-for="AssignedTo" asp-items="Model.Users" class="form-select"></select>
+                    <span asp-validation-for="AssignedTo" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="CustomerId" class="form-label">Related Customer</label>
+                    <select asp-for="CustomerId" asp-items="Model.Customers" class="form-select">
+                        <option value="">-- None --</option>
+                    </select>
+                    <span asp-validation-for="CustomerId" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="LeadId" class="form-label">Related Lead</label>
+                    <select asp-for="LeadId" asp-items="Model.Leads" class="form-select">
+                        <option value="">-- None --</option>
+                    </select>
+                    <span asp-validation-for="LeadId" class="field-validation-error"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label">Description</label>
+                    <textarea asp-for="Description" rows="3" class="form-control"></textarea>
+                    <span asp-validation-for="Description" class="field-validation-error"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">@(isEdit ? "Update Activity" : "Save Activity")</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

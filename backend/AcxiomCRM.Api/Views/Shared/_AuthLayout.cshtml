@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - AcxiomCRM</title>
+    <link rel="icon" type="image/svg+xml" href="~/favicon.svg" />
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="auth-page d-flex align-items-center justify-content-center p-3">
+        <div class="auth-card w-100">
+            <div class="text-center text-white mb-4">
+                <h1 class="h3 fw-bold"><i class="bi bi-diagram-3-fill me-2"></i>AcxiomCRM</h1>
+                <p class="mb-0 opacity-75">Customer Relationship Management</p>
+            </div>
+            @if (TempData["Success"] is string success)
+            {
+                <div class="alert alert-success">@success</div>
+            }
+            @RenderBody()
+        </div>
+    </div>
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

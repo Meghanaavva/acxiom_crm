@@ -1,0 +1,18 @@
+# Node / React
+node_modules/
+dist/
+
+# .NET
+bin/
+obj/
+.vs/
+*.user
+
+# Local database
+*.db
+*.db-shm
+*.db-wal
+
+# OS / editor
+.DS_Store
+.idea/

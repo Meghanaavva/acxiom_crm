@@ -1,0 +1,59 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Login";
+    Layout = "_AuthLayout";
+}
+
+<div class="card shadow">
+    <div class="card-body p-4">
+        <h2 class="h5 mb-3">Sign in to your account</h2>
+
+        <form asp-action="Login" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" type="email" class="form-control" autocomplete="username" autofocus />
+                <span asp-validation-for="Email" class="field-validation-error"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Password</label>
+                <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="field-validation-error"></span>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+
+        <p class="text-center small mt-3 mb-0">
+            New user? <a asp-action="Register">Create an account</a>
+        </p>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-body small">
+        <div class="fw-semibold mb-2"><i class="bi bi-info-circle me-1"></i>Demo accounts (click to fill)</div>
+        @foreach (var (role, email, password) in new[] {
+            ("Admin", "admin@acxiomcrm.com", "Admin@123"),
+            ("Manager", "manager@acxiomcrm.com", "Manager@123"),
+            ("Sales Executive", "sales1@acxiomcrm.com", "Sales@123") })
+        {
+            <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start mb-1 demo-login" data-email="@email" data-password="@password">
+                <strong>@role:</strong> @email / @password
+            </button>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll('.demo-login').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('Email').value = btn.dataset.email;
+                document.getElementById('Password').value = btn.dataset.password;
+            });
+        });
+    </script>
+}

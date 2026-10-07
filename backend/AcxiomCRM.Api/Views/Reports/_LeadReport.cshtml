@@ -1,0 +1,43 @@
+@model PagedResult<LeadReportRow>?
+@if (Model == null) { return; }
+
+<div class="table-responsive">
+    <table class="table table-hover table-sm align-middle mb-0">
+        <thead>
+            <tr>
+                @Ui.SortHeader(Context.Request, "leadCode", "Code")
+                @Ui.SortHeader(Context.Request, "leadName", "Lead")
+                @Ui.SortHeader(Context.Request, "companyName", "Company")
+                @Ui.SortHeader(Context.Request, "source", "Source")
+                @Ui.SortHeader(Context.Request, "status", "Status")
+                @Ui.SortHeader(Context.Request, "priority", "Priority")
+                <th class="text-end"><a href="@Ui.WithQuery(Context.Request, ("sortBy", "expectedValue"), ("sortOrder", Context.Request.Query["sortOrder"] == "asc" ? "desc" : "asc"))" class="text-reset text-decoration-none">Expected Value</a></th>
+                <th>Owner</th>
+                <th>Converted</th>
+                @Ui.SortHeader(Context.Request, "createdAt", "Created")
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Data.Count == 0)
+            {
+                <tr><td colspan="10" class="text-center text-muted py-4">No records found.</td></tr>
+            }
+            @foreach (var r in Model.Data)
+            {
+                <tr>
+                    <td class="text-nowrap">@r.LeadCode</td>
+                    <td><a asp-controller="Leads" asp-action="Details" asp-route-id="@r.Id">@r.LeadName</a></td>
+                    <td>@(r.CompanyName ?? "-")</td>
+                    <td>@r.Source</td>
+                    <td>@Ui.Badge(r.Status)</td>
+                    <td>@Ui.Badge(r.Priority)</td>
+                    <td class="text-end">@Ui.Currency(r.ExpectedValue)</td>
+                    <td>@r.AssignedToName</td>
+                    <td>@(r.Converted ? "Yes · " + Ui.Date(r.ConvertedAt) : "No")</td>
+                    <td class="text-nowrap">@Ui.Date(r.CreatedAt)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<partial name="_Pagination" model="Model.Pagination" />

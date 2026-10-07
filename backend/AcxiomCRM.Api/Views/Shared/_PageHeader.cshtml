@@ -1,0 +1,8 @@
+@model (string Title, string? Subtitle)
+<div class="mb-4">
+    <h1 class="h4 mb-0">@Model.Title</h1>
+    @if (!string.IsNullOrEmpty(Model.Subtitle))
+    {
+        <p class="text-muted small mb-0">@Model.Subtitle</p>
+    }
+</div>

@@ -1,0 +1,84 @@
+@model PipelineDto
+@{
+    ViewData["Title"] = "Sales Pipeline";
+    var openStages = Model.Stages.Where(s => OpportunityStages.IsOpen(s.Stage)).ToList();
+    var openAmount = openStages.Sum(s => s.Amount);
+    var openWeighted = openStages.Sum(s => s.WeightedAmount);
+    var colors = new Dictionary<string, string>
+    {
+        ["Qualification"] = "primary", ["Proposal"] = "info", ["Negotiation"] = "warning", ["Won"] = "success", ["Lost"] = "danger",
+    };
+    string NextStage(string stage)
+    {
+        var index = Array.IndexOf(OpportunityStages.Open, stage);
+        return index >= 0 && index < OpportunityStages.Open.Length - 1 ? OpportunityStages.Open[index + 1] : OpportunityStages.Won;
+    }
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">Sales Pipeline</h1>
+        <p class="text-muted small mb-0">Open pipeline @Ui.Currency(openAmount) · Weighted @Ui.Currency(openWeighted)</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>List View</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Opportunity</a>
+    </div>
+</div>
+
+<div class="d-flex gap-3 overflow-auto pb-3">
+    @foreach (var column in Model.Stages)
+    {
+        var color = colors.GetValueOrDefault(column.Stage, "secondary");
+        var isOpenStage = OpportunityStages.IsOpen(column.Stage);
+        <div class="pipeline-column flex-shrink-0" style="width: 270px;">
+            <div class="card border-top border-3 border-@color">
+                <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">@column.Stage</span>
+                        <span class="badge bg-@color @(color is "warning" or "info" ? "text-dark" : "")">@column.Count</span>
+                    </div>
+                    <div class="small text-muted">
+                        @Ui.Currency(column.Amount)@(isOpenStage ? $" · Wtd {Ui.Currency(column.WeightedAmount)}" : "")
+                    </div>
+                </div>
+                <div class="card-body bg-light p-2">
+                    @if (column.Items.Count == 0)
+                    {
+                        <div class="text-center text-muted small py-3">No opportunities</div>
+                    }
+                    @foreach (var o in column.Items)
+                    {
+                        <div class="card mb-2">
+                            <div class="card-body p-2 small">
+                                <a asp-action="Details" asp-route-id="@o.Id" class="fw-semibold text-decoration-none d-block">@o.OpportunityName</a>
+                                <div class="text-muted">@o.CustomerName</div>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <span class="fw-semibold">@Ui.Currency(o.Amount)</span>
+                                    <span>@o.Probability%</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-1">
+                                    <span class="text-muted"><i class="bi bi-calendar me-1"></i>@Ui.Date(o.ExpectedCloseDate)</span>
+                                    @if (isOpenStage)
+                                    {
+                                        var next = NextStage(o.Stage);
+                                        <form asp-action="ChangeStage" asp-route-id="@o.Id" method="post"
+                                              data-confirm="Move @o.OpportunityName to @next?" data-confirm-button="Move"
+                                              data-confirm-variant="@(next == OpportunityStages.Won ? "btn-success" : "btn-primary")">
+                                            <input type="hidden" name="stage" value="@next" />
+                                            <input type="hidden" name="returnTo" value="pipeline" />
+                                            <button type="submit" class="btn btn-sm btn-outline-primary py-0" title="Move to @next" aria-label="Move @o.OpportunityName to @next">
+                                                <i class="bi bi-arrow-right"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                                <div class="text-muted mt-1"><i class="bi bi-person me-1"></i>@o.AssignedToName</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,136 @@
+@model ActivityIndexViewModel
+@{
+    ViewData["Title"] = "Activities";
+    var isAdminOrManager = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
+    var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var icons = new Dictionary<string, string>
+    {
+        ["Call"] = "bi-telephone",
+        ["Meeting"] = "bi-people",
+        ["Email"] = "bi-envelope",
+        ["Task"] = "bi-check2-square",
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">Activities</h1>
+        <p class="text-muted small mb-0">Calls, meetings, emails and tasks</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Log Activity</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="get" class="row g-2 mb-3 auto-submit">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <input type="search" name="search" value="@Model.Query.Search" class="form-control" placeholder="Search by subject" aria-label="Search activities" />
+                    <button class="btn btn-outline-primary" type="submit" aria-label="Search"><i class="bi bi-search"></i></button>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select name="activityType" class="form-select" aria-label="Filter by activity type">
+                    <option value="">All Types</option>
+                    @foreach (var t in ActivityTypes.All)
+                    {
+                        <option value="@t" selected="@(Model.Query.ActivityType == t)">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select" aria-label="Filter by status">
+                    <option value="">All Statuses</option>
+                    @foreach (var s in ActivityStatuses.All)
+                    {
+                        <option value="@s" selected="@(Model.Query.Status == s)">@s</option>
+                    }
+                </select>
+            </div>
+            @if (Model.Users.Count > 1)
+            {
+                <div class="col-md-2">
+                    <select name="assignedTo" class="form-select" aria-label="Filter by assigned user">
+                        <option value="">All Users</option>
+                        @foreach (var u in Model.Users)
+                        {
+                            <option value="@u.Value" selected="@(Model.Query.AssignedTo?.ToString() == u.Value)">@u.Text</option>
+                        }
+                    </select>
+                </div>
+            }
+            <div class="col-6 col-md">
+                <input type="date" name="dateFrom" value="@Model.Query.DateFrom" class="form-control" aria-label="From date" title="From date" />
+            </div>
+            <div class="col-6 col-md">
+                <input type="date" name="dateTo" value="@Model.Query.DateTo" class="form-control" aria-label="To date" title="To date" />
+            </div>
+            <input type="hidden" name="sortBy" value="@Model.Query.SortBy" />
+            <input type="hidden" name="sortOrder" value="@Model.Query.SortOrder" />
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        @Ui.SortHeader(Context.Request, "activityType", "Type")
+                        @Ui.SortHeader(Context.Request, "subject", "Subject")
+                        @Ui.SortHeader(Context.Request, "activityDate", "Date")
+                        <th>Related To</th>
+                        @Ui.SortHeader(Context.Request, "status", "Status")
+                        <th>Assigned To</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Result.Data.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center text-muted py-4">No activities found.</td></tr>
+                    }
+                    @foreach (var a in Model.Result.Data)
+                    {
+                        var canDelete = isAdminOrManager || a.AssignedTo.ToString() == currentUserId;
+                        <tr>
+                            <td class="text-nowrap"><i class="bi @(icons.GetValueOrDefault(a.ActivityType, "bi-activity")) me-1 text-primary"></i>@a.ActivityType</td>
+                            <td>
+                                <div class="fw-semibold">@a.Subject</div>
+                                @if (!string.IsNullOrEmpty(a.Description))
+                                {
+                                    <div class="small text-muted text-truncate" style="max-width: 280px;">@a.Description</div>
+                                }
+                            </td>
+                            <td class="text-nowrap">@Ui.DateTime(a.ActivityDate)</td>
+                            <td class="small">
+                                @if (a.CustomerId != null)
+                                {
+                                    <div><i class="bi bi-people me-1"></i><a asp-controller="Customers" asp-action="Details" asp-route-id="@a.CustomerId">@a.CustomerName</a></div>
+                                }
+                                @if (a.LeadId != null)
+                                {
+                                    <div><i class="bi bi-person-plus me-1"></i><a asp-controller="Leads" asp-action="Details" asp-route-id="@a.LeadId">@a.LeadName</a></div>
+                                }
+                                @if (a.CustomerId == null && a.LeadId == null)
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>@Ui.Badge(a.Status)</td>
+                            <td>@a.AssignedToName</td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit @a.Subject"><i class="bi bi-pencil"></i></a>
+                                @if (canDelete)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" data-confirm="Are you sure you want to delete '@a.Subject'?" data-confirm-button="Delete">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete @a.Subject"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pagination" model="Model.Result.Pagination" />
+    </div>
+</div>

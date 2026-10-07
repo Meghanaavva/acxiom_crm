@@ -1,0 +1,156 @@
+@model AuditLogIndexViewModel
+@{
+    ViewData["Title"] = "Audit Log";
+}
+
+@await Html.PartialAsync("_PageHeader", ("Audit Log", (string?)"Security and business events. Audit records are append-only and cannot be modified."))
+
+<div class="card">
+    <div class="card-body">
+        <form method="get" class="row g-2 mb-3 auto-submit">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" name="search" value="@Model.Query.Search" class="form-control" placeholder="Search details or user name" aria-label="Search audit log" />
+                    <button class="btn btn-outline-primary" type="submit">Search</button>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select name="userId" class="form-select" aria-label="Filter by user">
+                    <option value="">All Users</option>
+                    @foreach (var u in Model.Users)
+                    {
+                        <option value="@u.Value" selected="@(Model.Query.UserId?.ToString() == u.Value)">@u.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="entityName" class="form-select" aria-label="Filter by module">
+                    <option value="">All Modules</option>
+                    @foreach (var e in Model.Filters.Entities)
+                    {
+                        <option value="@e" selected="@(Model.Query.EntityName == e)">@e</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="action" class="form-select" aria-label="Filter by action">
+                    <option value="">All Actions</option>
+                    @foreach (var a in Model.Filters.Actions)
+                    {
+                        <option value="@a" selected="@(Model.Query.Action == a)">@a</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="result" class="form-select" aria-label="Filter by result">
+                    <option value="">All Results</option>
+                    <option value="Success" selected="@(Model.Query.Result == "Success")">Success</option>
+                    <option value="Failure" selected="@(Model.Query.Result == "Failure")">Failure</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="dateFrom" class="form-label small text-muted mb-0">From</label>
+                <input type="date" id="dateFrom" name="dateFrom" value="@Model.Query.DateFrom" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label for="dateTo" class="form-label small text-muted mb-0">To</label>
+                <input type="date" id="dateTo" name="dateTo" value="@Model.Query.DateTo" class="form-control" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <a asp-action="Index" class="btn btn-outline-secondary w-100">Clear Filters</a>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Date &amp; Time</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Module</th>
+                        <th>Record</th>
+                        <th>Result</th>
+                        <th>Details</th>
+                        <th>IP Address</th>
+                        <th class="text-end">Values</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Result.Data.Count == 0)
+                    {
+                        <tr><td colspan="9" class="text-center text-muted py-4">No audit records found.</td></tr>
+                    }
+                    @foreach (var log in Model.Result.Data)
+                    {
+                        <tr>
+                            <td class="text-nowrap small">@Ui.DateTime(log.CreatedAt)</td>
+                            <td>@(log.UserName ?? "-")</td>
+                            <td><span class="badge bg-light text-dark border">@log.Action</span></td>
+                            <td>@log.EntityName</td>
+                            <td>@(log.RecordId ?? "-")</td>
+                            <td>@Ui.Badge(log.Result)</td>
+                            <td class="small text-break" style="max-width: 280px;">@(log.Details ?? "-")</td>
+                            <td class="small text-muted">@(log.IpAddress ?? "-")</td>
+                            <td class="text-end">
+                                @if (log.OldValue != null || log.NewValue != null)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary audit-view-btn" aria-label="View old and new values"
+                                            data-bs-toggle="modal" data-bs-target="#auditValuesModal"
+                                            data-title="@log.Action - @log.EntityName @log.RecordId"
+                                            data-old="@AuditLogIndexViewModel.Pretty(log.OldValue)"
+                                            data-new="@AuditLogIndexViewModel.Pretty(log.NewValue)">
+                                        <i class="bi bi-eye"></i> View
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pagination" model="Model.Result.Pagination" />
+    </div>
+</div>
+
+<!-- Old / new values dialog -->
+<div class="modal fade" id="auditValuesModal" tabindex="-1" aria-labelledby="auditValuesTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="auditValuesTitle">Audit Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Old Value</h6>
+                        <pre class="bg-light border rounded p-2 small mb-0" id="auditOldValue"></pre>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">New Value</h6>
+                        <pre class="bg-light border rounded p-2 small mb-0" id="auditNewValue"></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span class="small text-muted me-auto"><i class="bi bi-lock me-1"></i>Audit records cannot be modified.</span>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.audit-view-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('auditValuesTitle').textContent = btn.dataset.title;
+                document.getElementById('auditOldValue').textContent = btn.dataset.old;
+                document.getElementById('auditNewValue').textContent = btn.dataset.new;
+            });
+        });
+    </script>
+}

@@ -1,0 +1,34 @@
+@model PaginationInfo
+@{
+    var from = Model.Total == 0 ? 0 : (Model.Page - 1) * Model.PageSize + 1;
+    var to = Math.Min(Model.Page * Model.PageSize, Model.Total);
+    // show max 5 page numbers around the current page
+    var start = Math.Max(1, Math.Min(Model.Page - 2, Model.TotalPages - 4));
+    var end = Math.Min(Model.TotalPages, start + 4);
+    string PageUrl(int page) => Ui.WithQuery(Context.Request, ("page", page.ToString()));
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+    <div class="d-flex align-items-center gap-2 small text-muted">
+        <span>Showing @from-@to of @Model.Total</span>
+        <select class="form-select form-select-sm w-auto page-size-select" aria-label="Rows per page">
+            @foreach (var size in new[] { 10, 25, 50 })
+            {
+                <option value="@Ui.WithQuery(Context.Request, ("pageSize", size.ToString()), ("page", null))" selected="@(size == Model.PageSize)">@size / page</option>
+            }
+        </select>
+    </div>
+    <nav aria-label="Pagination">
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                <a class="page-link" href="@PageUrl(Model.Page - 1)" aria-label="Previous">&laquo;</a>
+            </li>
+            @for (var p = start; p <= end; p++)
+            {
+                <li class="page-item @(p == Model.Page ? "active" : "")"><a class="page-link" href="@PageUrl(p)">@p</a></li>
+            }
+            <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" href="@PageUrl(Model.Page + 1)" aria-label="Next">&raquo;</a>
+            </li>
+        </ul>
+    </nav>
+</div>

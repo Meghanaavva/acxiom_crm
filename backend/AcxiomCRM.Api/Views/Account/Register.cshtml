@@ -1,0 +1,42 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+    Layout = "_AuthLayout";
+}
+
+<div class="card shadow">
+    <div class="card-body p-4">
+        <h2 class="h5 mb-3">Create an account</h2>
+        <form asp-action="Register" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Full Name <span class="text-danger">*</span></label>
+                <input asp-for="Name" class="form-control" autocomplete="name" />
+                <span asp-validation-for="Name" class="field-validation-error"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email <span class="text-danger">*</span></label>
+                <input asp-for="Email" type="email" class="form-control" autocomplete="email" />
+                <span asp-validation-for="Email" class="field-validation-error"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Password <span class="text-danger">*</span></label>
+                <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" data-val-passwordpolicy="Password" />
+                <span asp-validation-for="Password" class="field-validation-error"></span>
+                <div class="form-text">Min 8 characters with upper case, lower case, number and special character.</div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="ConfirmPassword" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="field-validation-error"></span>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Register</button>
+        </form>
+        <p class="text-center small mt-3 mb-0">Already have an account? <a asp-action="Login">Login</a></p>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,127 @@
+@model LeadIndexViewModel
+@{
+    ViewData["Title"] = "Leads";
+    var canDelete = User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Manager);
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-0">Leads</h1>
+        <p class="text-muted small mb-0">Capture, qualify and convert prospective customers</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Lead</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <!-- Search and filters -->
+        <form method="get" class="row g-2 mb-3 auto-submit">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" name="search" value="@Model.Query.Search" class="form-control" placeholder="Search by name, company, email or phone" aria-label="Search leads" />
+                    <button class="btn btn-outline-primary" type="submit">Search</button>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <select name="status" class="form-select" aria-label="Filter by status">
+                    <option value="">All Statuses</option>
+                    @foreach (var s in LeadStatuses.All)
+                    {
+                        <option value="@s" selected="@(Model.Query.Status == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <select name="source" class="form-select" aria-label="Filter by source">
+                    <option value="">All Sources</option>
+                    @foreach (var s in LeadSources.All)
+                    {
+                        <option value="@s" selected="@(Model.Query.Source == s)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <select name="priority" class="form-select" aria-label="Filter by priority">
+                    <option value="">All Priorities</option>
+                    @foreach (var p in LeadPriorities.All)
+                    {
+                        <option value="@p" selected="@(Model.Query.Priority == p)">@p</option>
+                    }
+                </select>
+            </div>
+            @if (Model.Users.Count > 1)
+            {
+                <div class="col-6 col-md-2">
+                    <select name="assignedTo" class="form-select" aria-label="Filter by assigned user">
+                        <option value="">All Owners</option>
+                        @foreach (var u in Model.Users)
+                        {
+                            <option value="@u.Value" selected="@(Model.Query.AssignedTo?.ToString() == u.Value)">@u.Text</option>
+                        }
+                    </select>
+                </div>
+            }
+            <input type="hidden" name="sortBy" value="@Model.Query.SortBy" />
+            <input type="hidden" name="sortOrder" value="@Model.Query.SortOrder" />
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        @Ui.SortHeader(Context.Request, "leadCode", "Code")
+                        @Ui.SortHeader(Context.Request, "leadName", "Lead Name")
+                        @Ui.SortHeader(Context.Request, "companyName", "Company")
+                        <th>Source</th>
+                        @Ui.SortHeader(Context.Request, "status", "Status")
+                        @Ui.SortHeader(Context.Request, "priority", "Priority")
+                        @Ui.SortHeader(Context.Request, "expectedValue", "Expected Value")
+                        <th>Assigned To</th>
+                        @Ui.SortHeader(Context.Request, "createdAt", "Created")
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Result.Data.Count == 0)
+                    {
+                        <tr><td colspan="10" class="text-center text-muted py-4">No leads found.</td></tr>
+                    }
+                    @foreach (var l in Model.Result.Data)
+                    {
+                        var closed = l.Status == LeadStatuses.Converted || l.Status == LeadStatuses.Lost;
+                        <tr>
+                            <td class="text-nowrap">@l.LeadCode</td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@l.Id" class="fw-semibold text-decoration-none">@l.LeadName</a>
+                                <div class="small text-muted">@(l.Email ?? l.Phone)</div>
+                            </td>
+                            <td>@(l.CompanyName ?? "-")</td>
+                            <td>@l.Source</td>
+                            <td>@Ui.Badge(l.Status)</td>
+                            <td>@Ui.Badge(l.Priority)</td>
+                            <td class="text-end">@Ui.Currency(l.ExpectedValue)</td>
+                            <td>@l.AssignedToName</td>
+                            <td class="text-nowrap">@Ui.Date(l.CreatedAt)</td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@l.Id" class="btn btn-sm btn-outline-secondary" title="View" aria-label="View @l.LeadName"><i class="bi bi-eye"></i></a>
+                                @if (!closed)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@l.Id" class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit @l.LeadName"><i class="bi bi-pencil"></i></a>
+                                }
+                                @if (canDelete)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@l.Id" method="post" class="d-inline" data-confirm="Are you sure you want to delete the lead @l.LeadName? This action will be recorded in the audit log." data-confirm-button="Delete">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete @l.LeadName"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pagination" model="Model.Result.Pagination" />
+    </div>
+</div>
